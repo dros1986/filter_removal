@@ -13,3 +13,6 @@ Input images
 
 Output images
 ![output](https://github.com/dros1986/filter_removal/blob/master/images/output.png)
+
+Comparison
+![input](https://github.com/dros1986/filter_removal/blob/master/images/comparison.gif)
