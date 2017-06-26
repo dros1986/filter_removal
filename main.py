@@ -92,6 +92,20 @@ def patches2im(patches, patchSize, patches_per_row):
     return img
 
 
+def save_checkpoint(state, is_best, filename='checkpoint.pth'):
+    torch.save(state, filename)
+    if is_best:
+        shutil.copyfile(filename, 'model_best.pth')
+
+
+def psnr(img1, img2):
+    mse = torch.mean( torch.pow( (img1 - img2),2 ) )
+    if mse == 0:
+        return 100
+    PIXEL_MAX = 1.0
+    return 20 * math.log10(PIXEL_MAX / math.sqrt(mse))
+
+
 # ------------------ NET ------------------
 class Net(nn.Module):
     def __init__(self, img_dim, patchSize, nc, nf):
@@ -99,7 +113,10 @@ class Net(nn.Module):
         self.img_dim = img_dim
         self.patchSize = patchSize
         # calculate number of patches
-        self.npatches = int(math.floor(img_dim[0]/patchSize)*math.floor(img_dim[1]/patchSize))
+        self.hpatches = int(math.floor(img_dim[0]/patchSize))
+        self.wpatches = int(math.floor(img_dim[1]/patchSize))
+        self.npatches = self.hpatches *self.wpatches
+        #self.npatches = int(math.floor(img_dim[0]/patchSize)*math.floor(img_dim[1]/patchSize))
         # create layers
         self.b1 = nn.BatchNorm2d(3)
         self.c1 = nn.Conv2d(3, nc, kernel_size=3, stride=2, padding=0)
@@ -116,15 +133,6 @@ class Net(nn.Module):
         self.l2 = nn.Linear(nf, nf)
         self.l3 = nn.Linear(nf, self.npatches*9)
 
-        #
-        # self.l1 = nn.Linear(3*img_dim[0]*img_dim[1], n)
-        # # self.d1 = nn.Dropout(0.2)
-        # self.l2 = nn.Linear(n,n)
-        # # self.d2 = nn.Dropout(0.2)
-        # self.l3 = nn.Linear(n,n)
-        # # self.d3 = nn.Dropout(0.2)
-        # self.l4 = nn.Linear(n,self.npatches*9)
-
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
@@ -137,16 +145,15 @@ class Net(nn.Module):
         # take x between -1 and 1
         x = x*2-1
 
-        # convert input in patches
-        patches, patches_per_row = batch2patch(x, self.patchSize)
-        # calculate filters
-        # x = x.view(-1, self.img_dim[0]*self.img_dim[1]*3)
-        # x = F.relu(self.l1(x))
-        # x = F.relu(self.l2(x))
-        # x = F.relu(self.l3(x))
-        # x = F.relu(self.l4(x))
-        # x = x.view(-1, self.npatches, 3, 3)
+        # convert images as array b x #px x 3 x 1
+        img = x.view(-1,3, self.img_dim[0]*self.img_dim[1],1)
+        img = img.clone().permute(0,2,1,3)
+        # print(img.size())
+        # print(x[1,:,0,2])
+        # print(img[1,2,:,:])
 
+        # convert input in patches
+        #patches, patches_per_row = batch2patch(x, self.patchSize)
 
         # calculate filters
         x = F.relu(self.c1(self.b1(x)))
@@ -158,26 +165,24 @@ class Net(nn.Module):
         x = F.relu(self.l1(x))
         x = F.relu(self.l2(x))
         x = F.relu(self.l3(x))
-        x = x.view(-1, self.npatches, 3, 3)
+        # x = x.view(-1, self.npatches, 3, 3)
+        x = x.view(-1, 9, self.hpatches, self.wpatches)
+        # upsample
+        x = F.upsample_bilinear(x,scale_factor=self.patchSize)
+        # unroll
+        x = x.view(-1,9,self.img_dim[0]*self.img_dim[1])
+        # swap axes
+        x = x.permute(0,2,1)
+        # expand 3x3
+        x = x.contiguous().view(-1,x.size(1),3,3)
 
-        # # normalize each row of the filter x
-        # for i in range(x.size(0)):
-        #     for j in range(x.size(1)):
-        #         for k in range(x.size(2)):
-        #             s = torch.sum(x[i,j,k,:])
-        #             if s == 0:
-        #                 s = s + 0.0001
-        #             for l in range(x.size(3)):
-        #                 x[i,j,k,l] = x[i,j,k,l].clone() / s
-
-        #import ipdb; ipdb.set_trace()
-
-        # multiply patches for filters
+        # multiply pixels for filters
         for bn in range(x.size(0)):
-            patches[bn,:,:,:] = torch.bmm(x[bn,:,:,:].clone(),patches[bn,:,:,:].clone())
+            img[bn,:,:,:] = torch.bmm(x[bn,:,:,:].clone(),img[bn,:,:,:].clone())
 
-        # convert patches back to batch
-        img = patches2batch(patches, self.patchSize, patches_per_row)
+        # convert images back to original shape
+        img = img.permute(0,2,1,3)
+        img = img.view(-1,3, self.img_dim[0], self.img_dim[1])
 
         # apply tanh
         img = F.tanh(img)
@@ -194,8 +199,10 @@ img_dim = [256,256]
 patchSize = 8 #8 #64 #16 #128
 nRow = 8 #10
 batchSize = nRow*nRow
+batchSizeVal = 50
 nepochs = 1000
-saveEvery = 1
+saveImagesEvery = 1
+saveModelEvery = 200
 nc = 200
 nf = 2000
 lr = 0.0001 #0.0002
@@ -253,10 +260,20 @@ for epoch in range(nepochs):
         # make grid
         # grid = utils.make_grid(output.data, nrow=nRow)
         # print(grid.size())
-        if bn%saveEvery == 0:
+        if bn%saveImagesEvery == 0:
             utils.save_image(orig.data, './gt.png', nrow=nRow)
             utils.save_image(filt.data, './input.png', nrow=nRow)
             utils.save_image(output.data, './output.png', nrow=nRow)
+
+
+        if bn%saveModelEvery == 0:
+            save_checkpoint({
+                'epoch': epoch + 1,
+                'state_dict': net.state_dict(),
+                'optimizer' : optimizer.state_dict(),
+                'best_psnr' : best_psnr
+            }, False)
+
         #print(grid.size())
         # pretty printings
         col = '\033[92m'
