@@ -5,7 +5,9 @@ from torch.autograd import Variable
 import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms, utils
-from dataloader_python import dataloader
+import torch.utils.data as data
+from pytorch_dataloader.dataloader import Dataset
+from multiprocessing import cpu_count
 import math
 import numpy as np
 import os,sys
@@ -222,17 +224,30 @@ base_dir = '/media/flavio/Volume/datasets/places-instagram/'
 img_dirs = [os.path.join(base_dir,'images_orig/'), os.path.join(base_dir,'images/')]
 gt_train = os.path.join(base_dir,'train-list.txt')
 gt_valid = os.path.join(base_dir,'smallvalidation-list.txt')
-train_data = dataloader.Dataloader(img_dirs, gt_train, batchSize, [256,256], [256,256], convert2torch=True, sep=',')
-valid_data = dataloader.Dataloader(img_dirs, gt_valid, batchSize, [256,256], [256,256], convert2torch=True, sep=',')
+# create loaders
+train_loader = data.DataLoader(
+		Dataset(img_dirs, gt_train, [256,256], [256,256], sep=','),
+		batch_size = batchSize,
+		shuffle = True,
+		num_workers = cpu_count(),
+)
+valid_loader = data.DataLoader(
+		Dataset(img_dirs, gt_valid, [256,256], [256,256], sep=','),
+		batch_size = batchSize,
+		shuffle = True,
+		num_workers = cpu_count(),
+)
+
+best_psnr = np.inf
 
 # train
 for epoch in range(nepochs):
     print('------------------------------- EPOCH #' + str(epoch) + ' -------------------------------')
-    for bn in range(train_data.nBatches()):
-        # load data
-        orig, filt, target = train_data.getBatch()
+    for bn, (data, target) in enumerate(train_loader):
+        # split images in orig and filt
+        orig, filt = data
         # convert to float
-        orig, filt = orig.float(), filt.float()
+        # orig, filt = orig.float(), filt.float()
         # convert in autograd variables
         orig, filt, target = Variable(orig), Variable(filt), Variable(target)
         # move in GPU
@@ -278,7 +293,7 @@ for epoch in range(nepochs):
         # pretty printings
         col = '\033[92m'
         endCol = '\033[0m'
-        print('Epoch: [' + str(epoch+1) + '][' + str(bn+1) + '/' + str(train_data.nBatches()) + '] Loss = ' + col + str(round(loss.data[0],4)) + endCol)
+        print('Epoch: [' + str(epoch+1) + '][' + str(bn+1) + '/' + str(len(train_loader)) + '] Loss = ' + col + str(round(loss.data[0],4)) + endCol)
         #sys.exit()
         #print(loss.data[0])
         # if bn >= 100:
