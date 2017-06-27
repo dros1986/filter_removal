@@ -187,7 +187,7 @@ class Net(nn.Module):
         img = img.view(-1,3, self.img_dim[0], self.img_dim[1])
 
         # apply tanh
-        img = F.tanh(img)
+        # img = F.tanh(img)
 
         # convert back the image between 0-1
         img = (img+1)/2
