@@ -108,6 +108,13 @@ def psnr(img1, img2):
     return 20 * math.log10(PIXEL_MAX / math.sqrt(mse))
 
 
+def batch2poli(batch, deg):
+    ris = batch
+    for i in range(2,deg+1):
+        ris = torch.cat((ris,batch.pow(i)),1)
+        #polinomial expansion scikit
+
+
 # ------------------ NET ------------------
 class Net(nn.Module):
     def __init__(self, img_dim, patchSize, nc, nf):
