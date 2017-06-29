@@ -115,22 +115,25 @@ def batch2poli(batch, deg):
 	for i in range(2,deg+1):
 		ris = torch.cat((ris,batch.pow(i)),1)
 		#polinomial expansion scikit
+	return ris
 
 
 # ------------------ NET ------------------
 class Net(nn.Module):
-	def __init__(self, img_dim, patchSize, nc, nf):
+	def __init__(self, img_dim, patchSize, nc, nf, deg_poly):
 		super(Net, self).__init__()
 		self.img_dim = img_dim
 		self.patchSize = patchSize
+		self.deg_poly = deg_poly
+		self.nch = self.deg_poly*3
 		# calculate number of patches
 		self.hpatches = int(math.floor(img_dim[0]/patchSize))
 		self.wpatches = int(math.floor(img_dim[1]/patchSize))
 		self.npatches = self.hpatches *self.wpatches
 		#self.npatches = int(math.floor(img_dim[0]/patchSize)*math.floor(img_dim[1]/patchSize))
 		# create layers
-		self.b1 = nn.BatchNorm2d(3)
-		self.c1 = nn.Conv2d(3, nc, kernel_size=3, stride=2, padding=0)
+		self.b1 = nn.BatchNorm2d(self.nch)
+		self.c1 = nn.Conv2d(self.nch, nc, kernel_size=3, stride=2, padding=0)
 		self.b2 = nn.BatchNorm2d(nc)
 		self.c2 = nn.Conv2d(nc, nc, kernel_size=3, stride=2, padding=0)
 		self.b3 = nn.BatchNorm2d(nc)
@@ -142,7 +145,7 @@ class Net(nn.Module):
 
 		self.l1 = nn.Linear(nc*7*7, nf)
 		self.l2 = nn.Linear(nf, nf)
-		self.l3 = nn.Linear(nf, self.npatches*9)
+		self.l3 = nn.Linear(nf, self.npatches*self.nch*3)
 
 		for m in self.modules():
 			if isinstance(m, nn.Conv2d):
@@ -153,11 +156,13 @@ class Net(nn.Module):
 				m.bias.data.zero_()
 
 	def forward(self,x):
+		# convert input to poly
+		x = batch2poli(x, self.deg_poly)
 		# take x between -1 and 1
 		x = x*2-1
 
 		# convert images as array b x #px x 3 x 1
-		img = x.view(-1,3, self.img_dim[0]*self.img_dim[1],1)
+		img = x.view(-1,self.nch, self.img_dim[0]*self.img_dim[1],1)
 		img = img.clone().permute(0,2,1,3)
 		# print(img.size())
 		# print(x[1,:,0,2])
@@ -176,32 +181,32 @@ class Net(nn.Module):
 		x = F.relu(self.l1(x))
 		x = F.relu(self.l2(x))
 		x = F.relu(self.l3(x))
-		# x = x.view(-1, self.npatches, 3, 3)
-		x = x.view(-1, 9, self.hpatches, self.wpatches)
+		# x = x.view(-1, 9, self.hpatches, self.wpatches)
+		x = x.view(-1, self.nch*3, self.hpatches, self.wpatches)
 		# upsample
 		x = F.upsample_bilinear(x,scale_factor=self.patchSize)
 		# unroll
-		x = x.view(-1,9,self.img_dim[0]*self.img_dim[1])
+		#x = x.view(-1,9,self.img_dim[0]*self.img_dim[1])
+		x = x.view(-1,self.nch*3,self.img_dim[0]*self.img_dim[1])
 		# swap axes
 		x = x.permute(0,2,1)
-		# expand 3x3
-		x = x.contiguous().view(-1,x.size(1),3,3)
-
+		# expand 3xnch
+		x = x.contiguous().view(-1,x.size(1),3,self.nch)
+		# prepare output variable
+		ris = Variable(torch.zeros(img.size(0),img.size(1),3,img.size(3))).cuda()
 		# multiply pixels for filters
 		for bn in range(x.size(0)):
-			img[bn,:,:,:] = torch.bmm(x[bn,:,:,:].clone(),img[bn,:,:,:].clone())
-
+			ris[bn,:,:,:] = torch.bmm(x[bn,:,:,:].clone(),img[bn,:,:,:].clone())
 		# convert images back to original shape
-		img = img.permute(0,2,1,3)
-		img = img.view(-1,3, self.img_dim[0], self.img_dim[1])
-
+		ris = ris.permute(0,2,1,3)
+		ris = ris.contiguous()
+		ris = ris.view(-1,3, self.img_dim[0], self.img_dim[1])
 		# apply tanh
 		# img = F.tanh(img)
-
 		# convert back the image between 0-1
-		img = (img+1)/2
+		ris = (ris+1)/2
 
-		return img
+		return ris
 
 
 # ---------------- parse args ---------------
@@ -223,8 +228,9 @@ saveModelEvery = 200
 nc = 200
 nf = 2000
 lr = 0.0001 #0.0002
+deg_poly = 2
 # init net
-net = Net(img_dim, patchSize, nc, nf).cuda()
+net = Net(img_dim, patchSize, nc, nf, deg_poly).cuda()
 
 # init loss
 Loss = nn.MSELoss()
