@@ -145,7 +145,7 @@ class Net(nn.Module):
 
 		self.l1 = nn.Linear(nc*7*7, nf)
 		self.l2 = nn.Linear(nf, nf)
-		self.l3 = nn.Linear(nf, self.npatches*self.nch*3)
+		self.l3 = nn.Linear(nf, self.npatches*(self.nch*3+3))
 
 		for m in self.modules():
 			if isinstance(m, nn.Conv2d):
@@ -182,16 +182,19 @@ class Net(nn.Module):
 		x = F.relu(self.l2(x))
 		x = F.relu(self.l3(x))
 		# x = x.view(-1, 9, self.hpatches, self.wpatches)
-		x = x.view(-1, self.nch*3, self.hpatches, self.wpatches)
+		x = x.view(-1, self.nch*3+3, self.hpatches, self.wpatches)
 		# upsample
-		x = F.upsample_bilinear(x,scale_factor=self.patchSize)
+		x = F.upsample_bilinear(x,scale_factor=self.patchSize) # (36L, 18L+3, 256L, 256L)
 		# unroll
 		#x = x.view(-1,9,self.img_dim[0]*self.img_dim[1])
-		x = x.view(-1,self.nch*3,self.img_dim[0]*self.img_dim[1])
+		x = x.view(-1,self.nch*3+3,self.img_dim[0]*self.img_dim[1]) # (36L, 18L+3, 65536L)
 		# swap axes
-		x = x.permute(0,2,1)
+		x = x.permute(0,2,1) # (36L, 65536L, 18L+3)
 		# expand 3xnch
-		x = x.contiguous().view(-1,x.size(1),3,self.nch)
+		x = x.contiguous().view(-1,x.size(1),3,self.nch+1) # (36L, 65536L, 3L, 6L+1)
+		# add white channels to image
+		w = Variable( torch.ones(img.size(0),img.size(1),1,img.size(3)) ).cuda()
+		img = torch.cat((img,w),2)
 		# prepare output variable
 		ris = Variable(torch.zeros(img.size(0),img.size(1),3,img.size(3))).cuda()
 		# multiply pixels for filters
