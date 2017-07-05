@@ -111,10 +111,17 @@ def psnr(img1, img2):
 
 
 def batch2poli(batch, deg):
+	if deg == 1: return batch
+	if deg > 2: raise ValueError('deg > 2 not implemented yet.')
+	r,g,b = torch.unsqueeze(batch[:,0,:,:],1), torch.unsqueeze(batch[:,1,:,:],1), torch.unsqueeze(batch[:,2,:,:],1)
 	ris = batch
-	for i in range(2,deg+1):
-		ris = torch.cat((ris,batch.pow(i)),1)
-		#polinomial expansion scikit
+	# b^2 + bg + br + g^2 + gr + r^2 + r + g + b
+	ris = torch.cat((ris,r.pow(2)),1) # r^2
+	ris = torch.cat((ris,g.pow(2)),1) # g^2
+	ris = torch.cat((ris,b.pow(2)),1) # b^2
+	ris = torch.cat((ris,b*g),1) # 2bg
+	ris = torch.cat((ris,b*r),1) # 2br
+	ris = torch.cat((ris,g*r),1) # 2gr
 	return ris
 
 
@@ -125,7 +132,12 @@ class Net(nn.Module):
 		self.img_dim = img_dim
 		self.patchSize = patchSize
 		self.deg_poly = deg_poly
-		self.nch = self.deg_poly*3
+		if deg_poly == 1:
+			self.nch = 3
+		elif deg_poly == 2:
+			self.nch = 9
+		else:
+			raise ValueError('deg > 2 not implemented yet.')
 		# calculate number of patches
 		self.hpatches = int(math.floor(img_dim[0]/patchSize))
 		self.wpatches = int(math.floor(img_dim[1]/patchSize))
@@ -145,7 +157,7 @@ class Net(nn.Module):
 
 		self.l1 = nn.Linear(nc*7*7, nf)
 		self.l2 = nn.Linear(nf, nf)
-		self.l3 = nn.Linear(nf, self.npatches*(self.nch*3+3))
+		self.l3 = nn.Linear(nf, self.npatches*(self.nch*3+3)) # 2000 -> 21504   1->21
 
 		for m in self.modules():
 			if isinstance(m, nn.Conv2d):
