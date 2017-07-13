@@ -111,18 +111,33 @@ def psnr(img1, img2):
 
 
 def batch2poli(batch, deg):
+	if deg > 3: raise ValueError('deg > 2 not implemented yet.')
 	if deg == 1: return batch
-	if deg > 2: raise ValueError('deg > 2 not implemented yet.')
 	r,g,b = torch.unsqueeze(batch[:,0,:,:],1), torch.unsqueeze(batch[:,1,:,:],1), torch.unsqueeze(batch[:,2,:,:],1)
+	# r + g + b
 	ris = batch
-	# b^2 + bg + br + g^2 + gr + r^2 + r + g + b
-	ris = torch.cat((ris,r.pow(2)),1) # r^2
-	ris = torch.cat((ris,g.pow(2)),1) # g^2
-	ris = torch.cat((ris,b.pow(2)),1) # b^2
-	ris = torch.cat((ris,b*g),1) # 2bg
-	ris = torch.cat((ris,b*r),1) # 2br
-	ris = torch.cat((ris,g*r),1) # 2gr
+	if deg > 1:
+		# r^2 + g^2 + b^2 + bg + br + gr
+		ris = torch.cat((ris,r.pow(2)),1) # r^2
+		ris = torch.cat((ris,g.pow(2)),1) # g^2
+		ris = torch.cat((ris,b.pow(2)),1) # b^2
+		ris = torch.cat((ris,b*g),1) # bg
+		ris = torch.cat((ris,b*r),1) # br
+		ris = torch.cat((ris,g*r),1) # gr
+	if deg > 2:
+		# (r^3 + g^3 + b^3) + (gb^2 + rb^2) + (bg^2 + rg^2) + (br^2  + gr^2) + bgr
+		ris = torch.cat((ris,r.pow(3)),1) # r^3
+		ris = torch.cat((ris,g.pow(3)),1) # g^3
+		ris = torch.cat((ris,b.pow(3)),1) # b^3
+		ris = torch.cat((ris,g*b.pow(2)),1) # gb^2
+		ris = torch.cat((ris,r*b.pow(2)),1) # rb^2
+		ris = torch.cat((ris,b*g.pow(2)),1) # bg^2
+		ris = torch.cat((ris,r*g.pow(2)),1) # rg^2
+		ris = torch.cat((ris,b*r.pow(2)),1) # br^2
+		ris = torch.cat((ris,g*r.pow(2)),1) # gr^2
+		ris = torch.cat((ris,b*g*r),1) # bgr
 	return ris
+
 
 
 # ------------------ NET ------------------
@@ -132,12 +147,13 @@ class Net(nn.Module):
 		self.img_dim = img_dim
 		self.patchSize = patchSize
 		self.deg_poly = deg_poly
-		if deg_poly == 1:
-			self.nch = 3
-		elif deg_poly == 2:
-			self.nch = 9
-		else:
-			raise ValueError('deg > 2 not implemented yet.')
+		self.nch = 3
+		if deg_poly > 1:
+			self.nch = self.nch + 6
+		if deg_poly > 2:
+			self.nch = self.nch + 10
+		if deg_poly > 3:
+			raise ValueError('deg > 3 not implemented yet.')
 		# calculate number of patches
 		self.hpatches = int(math.floor(img_dim[0]/patchSize))
 		self.wpatches = int(math.floor(img_dim[1]/patchSize))
@@ -233,8 +249,8 @@ args = parser.parse_args()
 # ------------------ TRAIN ------------------
 # set parameters
 img_dim = [256,256]
-patchSize = 256
-nRow = 6 #10
+patchSize = 8
+nRow = 5 #10
 batchSize = nRow*nRow
 batchSizeVal = 50
 nepochs = 4
@@ -243,7 +259,7 @@ saveModelEvery = 200
 nc = 200
 nf = 2000
 lr = 0.0001 #0.0002
-deg_poly = 2
+deg_poly = 3
 # init net
 net = Net(img_dim, patchSize, nc, nf, deg_poly).cuda()
 
