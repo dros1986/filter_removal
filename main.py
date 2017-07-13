@@ -249,7 +249,7 @@ args = parser.parse_args()
 # ------------------ TRAIN ------------------
 # set parameters
 img_dim = [256,256]
-patchSize = 32
+patchSize = 64
 nRow = 6
 batchSize = nRow*nRow
 batchSizeVal = 50
