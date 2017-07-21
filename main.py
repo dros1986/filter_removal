@@ -142,26 +142,29 @@ def batch2poli(batch, deg):
 
 # ------------------ NET ------------------
 class Net(nn.Module):
-	def __init__(self, img_dim, patchSize, nc, nf, deg_poly):
+	def __init__(self, img_dim, patchSize, nc, nf, deg_poly_in, deg_poly_out):
 		super(Net, self).__init__()
 		self.img_dim = img_dim
 		self.patchSize = patchSize
-		self.deg_poly = deg_poly
-		self.nch = 3
-		if deg_poly > 1:
-			self.nch = self.nch + 6
-		if deg_poly > 2:
-			self.nch = self.nch + 10
-		if deg_poly > 3:
-			raise ValueError('deg > 3 not implemented yet.')
+		self.deg_poly_in = deg_poly_in
+		self.deg_poly_out = deg_poly_out
+		# calculate number of channels
+		self.nch_in = 3
+		if deg_poly_in > 1: self.nch_in = self.nch_in + 6
+		if deg_poly_in > 2: self.nch_in = self.nch_in + 10
+		if deg_poly_in > 3: raise ValueError('deg > 3 not implemented yet.')
+		self.nch_out = 3
+		if deg_poly_out > 1: self.nch_out = self.nch_out + 6
+		if deg_poly_out > 2: self.nch_out = self.nch_out + 10
+		if deg_poly_out > 3: raise ValueError('deg > 3 not implemented yet.')
 		# calculate number of patches
 		self.hpatches = int(math.floor(img_dim[0]/patchSize))
 		self.wpatches = int(math.floor(img_dim[1]/patchSize))
 		self.npatches = self.hpatches *self.wpatches
 		#self.npatches = int(math.floor(img_dim[0]/patchSize)*math.floor(img_dim[1]/patchSize))
 		# create layers
-		self.b1 = nn.BatchNorm2d(self.nch)
-		self.c1 = nn.Conv2d(self.nch, nc, kernel_size=3, stride=2, padding=0)
+		self.b1 = nn.BatchNorm2d(self.nch_in)
+		self.c1 = nn.Conv2d(self.nch_in, nc, kernel_size=3, stride=2, padding=0)
 		self.b2 = nn.BatchNorm2d(nc)
 		self.c2 = nn.Conv2d(nc, nc, kernel_size=3, stride=2, padding=0)
 		self.b3 = nn.BatchNorm2d(nc)
@@ -173,7 +176,7 @@ class Net(nn.Module):
 
 		self.l1 = nn.Linear(nc*7*7, nf)
 		self.l2 = nn.Linear(nf, nf)
-		self.l3 = nn.Linear(nf, self.npatches*(self.nch*3+3)) # 2000 -> 21504   1->21
+		self.l3 = nn.Linear(nf, self.npatches*(self.nch_out*3+3)) # 2000 -> 21504   1->21
 
 		for m in self.modules():
 			if isinstance(m, nn.Conv2d):
@@ -184,11 +187,13 @@ class Net(nn.Module):
 				m.bias.data.zero_()
 
 	def forward(self,x):
-		# convert input to poly
-		x = batch2poli(x, self.deg_poly)
+		# create poly input
+		img = batch2poli(x, self.deg_poly_out)
 
-		# convert images as array b x #px x 3 x 1
-		img = x.view(-1,self.nch, self.img_dim[0]*self.img_dim[1],1)
+		# convert net input to poly
+		x = batch2poli(x, self.deg_poly_in)
+		# convert poly input as array b x #px x 3 x 1
+		img = img.view(-1,self.nch_out, self.img_dim[0]*self.img_dim[1],1)
 		img = img.clone().permute(0,2,1,3)
 		# print(img.size())
 		# print(x[1,:,0,2])
@@ -208,16 +213,16 @@ class Net(nn.Module):
 		x = F.relu(self.l2(x))
 		x = self.l3(x)
 		# x = x.view(-1, 9, self.hpatches, self.wpatches)
-		x = x.view(-1, self.nch*3+3, self.hpatches, self.wpatches)
+		x = x.view(-1, self.nch_out*3+3, self.hpatches, self.wpatches)
 		# upsample
 		x = F.upsample_bilinear(x,scale_factor=self.patchSize) # (36L, 18L+3, 256L, 256L)
 		# unroll
 		#x = x.view(-1,9,self.img_dim[0]*self.img_dim[1])
-		x = x.view(-1,self.nch*3+3,self.img_dim[0]*self.img_dim[1]) # (36L, 18L+3, 65536L)
+		x = x.view(-1,self.nch_out*3+3,self.img_dim[0]*self.img_dim[1]) # (36L, 18L+3, 65536L)
 		# swap axes
 		x = x.permute(0,2,1) # (36L, 65536L, 18L+3)
 		# expand 3xnch
-		x = x.contiguous().view(-1,x.size(1),3,self.nch+1) # (36L, 65536L, 3L, 6L+1)
+		x = x.contiguous().view(-1,x.size(1),3,self.nch_out+1) # (36L, 65536L, 3L, 6L+1)
 		# add white channels to image
 		w = Variable( torch.ones(img.size(0),img.size(1),1,img.size(3)) ).cuda()
 		img = torch.cat((img,w),2)
@@ -255,9 +260,10 @@ saveModelEvery = 200
 nc = 200
 nf = 2000
 lr = 0.0001 #0.0002
-deg_poly = 3
+deg_poly_in = 1
+deg_poly_out = 3
 # init net
-net = Net(img_dim, patchSize, nc, nf, deg_poly).cuda()
+net = Net(img_dim, patchSize, nc, nf, deg_poly_in, deg_poly_out).cuda()
 
 # init loss
 Loss = nn.MSELoss()
