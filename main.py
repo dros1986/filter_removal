@@ -208,7 +208,7 @@ class Net(nn.Module):
 		x = x.view(-1, x.size(1)*x.size(2)*x.size(3))
 		x = F.relu(self.l1(x))
 		x = F.relu(self.l2(x))
-		x = F.relu(self.l3(x))
+		x = self.l3(x)
 		# x = x.view(-1, 9, self.hpatches, self.wpatches)
 		x = x.view(-1, self.nch*3+3, self.hpatches, self.wpatches)
 		# upsample

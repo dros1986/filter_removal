@@ -26,3 +26,4 @@ Comparison
 | exp5      | 8       | R2,G2,B2,R,G,B,K              | [-1,1] | Bilinear | N |
 | exp6->11  | 8-> 256 | (R+G+B)^2+(R+G+B)+K           | [-1,1] | Bilinear | N |
 | exp12->17 | 8-> 256 | (R+G+B)^3+(R+G+B)^2+(R+G+B)+K | [-1,1] | Bilinear | N |
+| exp18     | 8       | (R+G+B)^3+(R+G+B)^2+(R+G+B)+K | [-1,1] | Bilinear | N |
