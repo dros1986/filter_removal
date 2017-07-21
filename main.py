@@ -186,8 +186,6 @@ class Net(nn.Module):
 	def forward(self,x):
 		# convert input to poly
 		x = batch2poli(x, self.deg_poly)
-		# take x between -1 and 1
-		x = x*2-1
 
 		# convert images as array b x #px x 3 x 1
 		img = x.view(-1,self.nch, self.img_dim[0]*self.img_dim[1],1)
@@ -234,8 +232,6 @@ class Net(nn.Module):
 		ris = ris.view(-1,3, self.img_dim[0], self.img_dim[1])
 		# apply tanh
 		# img = F.tanh(img)
-		# convert back the image between 0-1
-		ris = (ris+1)/2
 
 		return ris
 
