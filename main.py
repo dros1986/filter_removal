@@ -16,85 +16,6 @@ from tqdm import tqdm
 
 #winit.xavier_normal
 
-# ----------------- PATCHES ----------------
-
-def batch2patch(batch, patchSize):
-	# init res var
-	if isinstance(batch, Variable):
-		patches = Variable(torch.Tensor().type_as(batch.data))
-	else:
-		patches = torch.Tensor().type_as(batch)
-	# call over all batch
-	for i in range(batch.size(0)):
-		cur_patch, patches_per_row = im2patch(batch[i,:,:,:], patchSize)
-		cur_patch = torch.unsqueeze(cur_patch, 0)
-		if patches.numel() == 0:
-			patches = cur_patch
-		else:
-			patches = torch.cat((patches,cur_patch),0)
-	return patches, patches_per_row
-
-def patches2batch(patches, patchSize, patches_per_row):
-	# init result var
-	if isinstance(patches, Variable):
-		batch = Variable(torch.Tensor().type_as(patches.data))
-	else:
-		batch = torch.Tensor().type_as(patches)
-	# call over all patches
-	for i in range(patches.size(0)):
-		cur_img = torch.unsqueeze(patches2im(patches[i,:,:,:], patchSize, patches_per_row), 0)
-		if batch.numel() == 0:
-			batch = cur_img
-		else:
-			batch = torch.cat((batch,cur_img), 0)
-	return batch
-
-def im2patch(img, patchSize):
-	# init res var
-	if isinstance(img, Variable):
-		patches = Variable(torch.Tensor().type_as(img.data))
-	else:
-		patches = torch.Tensor().type_as(img)
-	patches_per_row = 0
-	for r in np.arange(0,img.size(1),patchSize):
-		patches_per_row = patches_per_row + 1
-		for c in np.arange(0,img.size(2),patchSize):
-			cur_patch = img[:, r:r+patchSize, c:c+patchSize].contiguous()
-			cur_patch = cur_patch.view(1,3,-1)
-			if patches.numel() == 0:
-				patches = cur_patch
-			else:
-				patches = torch.cat((patches, cur_patch),0)
-	return patches, patches_per_row
-
-def patches2im(patches, patchSize, patches_per_row):
-	# count number of patches
-	npatches = patches.size(0)
-	cpatches = patches_per_row
-	rpatches = int(npatches/cpatches)
-	# init img
-	if isinstance(patches, Variable):
-		#patches = Variable(torch.Tensor().type_as(img.data))
-		img = Variable(torch.zeros(3,rpatches*patchSize, cpatches*patchSize).type_as(patches.data))
-	else:
-		img = torch.zeros(3,rpatches*patchSize, cpatches*patchSize).type_as(patches)
-	# paste into
-	cur_row, cur_col = 0,0
-	for i in range(patches.size(0)):
-		# increase row if needed
-		if not i==0 and i%cpatches==0:
-			cur_row = cur_row + patchSize
-			cur_col = 0
-		# vec2img
-		cur_patch = patches[i,:,:]
-		cur_patch = cur_patch.view(3,patchSize,patchSize)
-		# paste into image
-		img[:,cur_row:cur_row+patchSize, cur_col:cur_col+patchSize] = cur_patch
-		# increase col
-		cur_col = cur_col + patchSize
-	# return img
-	return img
-
 
 def save_checkpoint(state, is_best, filename='checkpoint.pth'):
 	torch.save(state, filename)
@@ -198,9 +119,6 @@ class Net(nn.Module):
 		# print(img.size())
 		# print(x[1,:,0,2])
 		# print(img[1,2,:,:])
-
-		# convert input in patches
-		#patches, patches_per_row = batch2patch(x, self.patchSize)
 
 		# calculate filters
 		x = F.relu(self.c1(self.b1(x)))
@@ -313,16 +231,6 @@ if not args.regen:
 			orig, filt, target = Variable(orig), Variable(filt), Variable(target)
 			# move in GPU
 			orig, filt, target = orig.cuda(), filt.cuda(), target.cuda()
-			# convert input in patches
-			#patches, patches_per_row = batch2patch(filt, patchSize)
-			#patches, patches_per_row = batch2patch(filt.data, patchSize)
-			#test
-			# utils.save_image(filt.data, './filt.png', nrow=nRow)
-			# batch = patches2batch(patches, patchSize, patches_per_row)
-			# utils.save_image(batch, './recombined.png', nrow=nRow)
-			# sys.exit()
-			# end test
-			#patches = Variable(patches, requires_grad=False)
 			# reset gradients
 			optimizer.zero_grad()
 			# calculate filters and multiply them to patches
