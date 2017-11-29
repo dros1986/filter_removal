@@ -14,8 +14,6 @@ import os,sys
 import argparse
 from tqdm import tqdm
 
-#winit.xavier_normal
-
 
 def save_checkpoint(state, is_best, filename='checkpoint.pth'):
 	torch.save(state, filename)
@@ -82,7 +80,6 @@ class Net(nn.Module):
 		self.hpatches = int(math.floor(img_dim[0]/patchSize))
 		self.wpatches = int(math.floor(img_dim[1]/patchSize))
 		self.npatches = self.hpatches *self.wpatches
-		#self.npatches = int(math.floor(img_dim[0]/patchSize)*math.floor(img_dim[1]/patchSize))
 		# create layers
 		self.b1 = nn.BatchNorm2d(self.nch_in)
 		self.c1 = nn.Conv2d(self.nch_in, nc, kernel_size=3, stride=2, padding=0)
@@ -116,10 +113,6 @@ class Net(nn.Module):
 		# convert poly input as array b x #px x 3 x 1
 		img = img.view(-1,self.nch_out, self.img_dim[0]*self.img_dim[1],1)
 		img = img.clone().permute(0,2,1,3)
-		# print(img.size())
-		# print(x[1,:,0,2])
-		# print(img[1,2,:,:])
-
 		# calculate filters
 		x = F.relu(self.c1(self.b1(x)))
 		x = F.relu(self.c2(self.b2(x)))
@@ -133,7 +126,7 @@ class Net(nn.Module):
 		# x = x.view(-1, 9, self.hpatches, self.wpatches)
 		x = x.view(-1, self.nch_out*3+3, self.hpatches, self.wpatches)
 		# upsample
-		x = F.upsample_bilinear(x,scale_factor=self.patchSize) # (36L, 18L+3, 256L, 256L)
+		x = F.upsample(x,scale_factor=self.patchSize,  mode='bilinear') # (36L, 18L+3, 256L, 256L)
 		# unroll
 		#x = x.view(-1,9,self.img_dim[0]*self.img_dim[1])
 		x = x.view(-1,self.nch_out*3+3,self.img_dim[0]*self.img_dim[1]) # (36L, 18L+3, 65536L)
@@ -153,9 +146,6 @@ class Net(nn.Module):
 		ris = ris.permute(0,2,1,3)
 		ris = ris.contiguous()
 		ris = ris.view(-1,3, self.img_dim[0], self.img_dim[1])
-		# apply tanh
-		# img = F.tanh(img)
-
 		return ris
 
 
@@ -164,22 +154,25 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-r", "--regen", help="Regenerate images using the model specified.",
 					default="")
 parser.add_argument("-ps", "--patchsize", help="Dimension of the patch.",
-					default=256)
+					default=8, type=int)
 parser.add_argument("-nrow", "--nrow", help="Batchsize will be nrow*nrow.",
-					default=5)
+					default=5, type=int)
 parser.add_argument("-di", "--degin", help="Degree of net input.",
-					default=2)
+					default=3, type=int)
 parser.add_argument("-do", "--degout", help="Degree of polynomial regressor.",
-					default=2)
-parser.add_argument("-dir", "--dir", help="Folder containing images.",
-					default='/media/flavio/Volume/datasets/places-instagram/')
+					default=3, type=int)
+parser.add_argument("-indir", "--indir", help="Folder containing filtered images.",
+					default='./datasets/places-instagram/images/')
+parser.add_argument("-gtdir", "--gtdir", help="Folder containing ground-truth images.",
+					default='./datasets/places-instagram/images_orig/')
+parser.add_argument("-trl", "--train_list", help="Train list.",
+					default='./datasets/places-instagram/train-list.txt')
+parser.add_argument("-val", "--validation_list", help="Validation list.",
+					default='./datasets/places-instagram/smallvalidation-list.txt')
+parser.add_argument("-tsl", "--test_list", help="Test list.",
+					default='./datasets/places-instagram/test-list.txt')
 args = parser.parse_args()
 
-# set args to int
-args.patchsize = int(args.patchsize)
-args.nrow = int(args.nrow)
-args.degin = int(args.degin)
-args.degout = int(args.degout)
 # print args
 conf_txt = ''
 for arg in vars(args):
@@ -189,8 +182,6 @@ print(conf_txt)
 out_file = open("config.txt","w")
 out_file.write(conf_txt)
 out_file.close()
-# for a in args:
-# 	import ipdb; ipdb.set_trace()
 # ------------------ TRAIN ------------------
 # set parameters
 img_dim = [256,256]
@@ -211,18 +202,15 @@ net = Net(img_dim, patchSize, nc, nf, deg_poly_in, deg_poly_out).cuda()
 
 # init loss
 Loss = nn.MSELoss()
-#Loss = nn.L1Loss()
 
 # init optimizer
-#optimizer = optim.SGD(net.parameters(), lr=lr, momentum=0.9)
 optimizer = optim.Adam(net.parameters(), lr=lr)
 
 # create dataloaders
-base_dir = args.dir
-img_dirs = [os.path.join(base_dir,'images_orig/'), os.path.join(base_dir,'images/')]
-gt_train = os.path.join(base_dir,'train-list.txt')
-gt_valid = os.path.join(base_dir,'smallvalidation-list.txt')
-gt_test  = os.path.join(base_dir,'test-list.txt')
+img_dirs = [args.gtdir, args.indir]
+gt_train = args.train_list
+gt_valid = args.validation_list
+gt_test = args.test_list
 # create loaders
 train_loader = data.DataLoader(
 		Dataset(img_dirs, gt_train, [256,256], [256,256], sep=','),
@@ -251,8 +239,6 @@ if not args.regen:
 		for bn, (data, target) in enumerate(train_loader):
 			# split images in orig and filt
 			orig, filt = data
-			# convert to float
-			# orig, filt = orig.float(), filt.float()
 			# convert in autograd variables
 			orig, filt, target = Variable(orig), Variable(filt), Variable(target)
 			# move in GPU
@@ -267,15 +253,14 @@ if not args.regen:
 			loss.backward()
 			# optimizer step
 			optimizer.step()
-			# make grid
-			# grid = utils.make_grid(output.data, nrow=nRow)
-			# print(grid.size())
+
+			# save images
 			if bn%saveImagesEvery == 0:
 				utils.save_image(orig.data, './gt.png', nrow=nRow)
 				utils.save_image(filt.data, './input.png', nrow=nRow)
 				utils.save_image(output.data, './output.png', nrow=nRow)
 
-
+			# save model
 			if bn%saveModelEvery == 0:
 				save_checkpoint({
 					'epoch': epoch + 1,
@@ -284,15 +269,10 @@ if not args.regen:
 					'best_psnr' : best_psnr
 				}, False)
 
-			#print(grid.size())
 			# pretty printings
 			col = '\033[92m'
 			endCol = '\033[0m'
 			print('Epoch: [' + str(epoch+1) + '][' + str(bn+1) + '/' + str(len(train_loader)) + '] Loss = ' + col + str(round(loss.data[0],4)) + endCol)
-			#sys.exit()
-			#print(loss.data[0])
-			# if bn >= 100:
-			#	 sys.exit()
 else:
 	# regenerate test set
 	print('Regenerating')
@@ -301,7 +281,6 @@ else:
 	# set network in test mode
 	net.train(False)
 	for bn, (data, target, fns) in enumerate(tqdm(test_loader)):
-		#for f in fns: print(f)
 		# split images in orig and filt
 		orig, filt = data
 		# convert in autograd variables
