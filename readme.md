@@ -1,7 +1,7 @@
 Pytorch implementation of the paper:
 
-**Artistic Photo Filter Removal Using CNNs**
-Journal of Electronic Imaging, SPIE
+**Artistic Photo Filter Removal Using CNNs**  
+Journal of Electronic Imaging, SPIE  
 [F. Piccoli](http://www.ivl.disco.unimib.it/people/flavio-piccoli/ "Flavio Piccoli"), [C. Cusano](http://www.ivl.disco.unimib.it/people/claudio-cusano/ "Claudio Cusano"), [S. Bianco](http://www.ivl.disco.unimib.it/people/simone-bianco/ "Simone Bianco"), [R. Schettini](http://www.ivl.disco.unimib.it/people/raimondo-schettini/ "Raimondo Schettini")
 
 Usage:
