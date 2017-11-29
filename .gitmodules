@@ -1,3 +1,0 @@
-[submodule "pytorch_dataloader"]
-	path = pytorch_dataloader
-	url = https://github.com/dros1986/pytorch_dataloader.git

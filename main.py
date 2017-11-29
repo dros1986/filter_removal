@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms, utils
 import torch.utils.data as data
-from pytorch_dataloader.dataloader import Dataset
+from Dataset import Dataset
 from multiprocessing import cpu_count
 import math
 import numpy as np
@@ -213,19 +213,19 @@ gt_valid = args.validation_list
 gt_test = args.test_list
 # create loaders
 train_loader = data.DataLoader(
-		Dataset(img_dirs, gt_train, [256,256], [256,256], sep=','),
+		Dataset(img_dirs, gt_train, sep=','),
 		batch_size = batchSize,
 		shuffle = True,
 		num_workers = cpu_count(),
 )
 valid_loader = data.DataLoader(
-		Dataset(img_dirs, gt_valid, [256,256], [256,256], sep=','),
+		Dataset(img_dirs, gt_valid, sep=','),
 		batch_size = batchSize,
 		shuffle = True,
 		num_workers = cpu_count(),
 )
 test_loader = data.DataLoader(
-		Dataset(img_dirs, gt_test, [256,256], [256,256], sep=',', include_filenames=True),
+		Dataset(img_dirs, gt_test, sep=',', include_filenames=True),
 		batch_size = batchSize,
 		shuffle = True,
 		num_workers = cpu_count(),
