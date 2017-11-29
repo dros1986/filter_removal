@@ -25,16 +25,15 @@ Input images
 Output images
 ![output](https://github.com/dros1986/filter_removal/blob/master/images/output.png)
 
-## Exp Table
-| Exp       | patchSize | Net In | Poly In | Range | Interpolation | TanH | ReLU |
-| --------- | --------- | ------ | ------- | ----- | ------------- | ---- | ---- |
-| exp2      | 8       | R,G,B                           | <-- | [-1,1] | Bilinear | Y | Y |
-| exp3      | 8       | R,G,B                           | <-- | [-1,1] | Bilinear | N | Y |
-| exp4      | 8       | R2,G2,B2,R,G,B                  | <-- | [-1,1] | Bilinear | N | Y |
-| exp5      | 8       | R2,G2,B2,R,G,B,K                | <-- | [-1,1] | Bilinear | N | Y |
-| exp6->11  | 8-> 256 | (R+G+B)^2+(R+G+B)+K             | <-- | [-1,1] | Bilinear | N | Y |
-| exp12->17 | 8-> 256 | (R+G+B)^3+(R+G+B)^2+(R+G+B)+K   | <-- | [-1,1] | Bilinear | N | Y |
-| exp18     | 256     | (R+G+B)^3+(R+G+B)^2+(R+G+B)+K   | <-- | [-1,1] | Bilinear | N | N |
-| exp19     | 8       | (R+G+B)^3+(R+G+B)^2+(R+G+B)+K   | <-- | [0,1]  | Bilinear | N | N |
-| exp20     | 8       | R+G+B | (R+G+B)^3+(R+G+B)^2+(R+G+B)+K | [0,1]  | Bilinear | N | N |
-| exp21->26 | 8-> 256 | (R+G+B)^3+(R+G+B)^2+(R+G+B)+K   | <-- | [0,1]  | Bilinear | N | N |
+## Parameters
+| Name | Description | Default |
+| ---- | ----------- | ------- |
+| degin | Degree of the polynomial onto which the color transform will be estimated | 3 |
+| degout | Degree of the polynomial onto which the color transform will be applied | 3 |
+| patchsize | patchsize*patchsize is the number of pixels involved in each color transform | 8 |
+| nrow | Batch size will be nrow*nrow | 5 |
+| indir | Folder containing filtered images | ./datasets/places-instagram/images/ |
+| gtdir | Folder containing original images | ./datasets/places-instagram/images_orig/ |
+| train_list | txt containing train set filenames | ./datasets/places-instagram/train-list.txt |
+| validation_list | txt containing validation set filenames | ./datasets/places-instagram/smallvalidation-list.txt |
+| test_list | txt containing test set filenames | ./datasets/places-instagram/test-list.txt |
