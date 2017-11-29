@@ -17,18 +17,11 @@ python main.py -degin 3 degout 3
 python main.py -degin 3 degout 3 --regen ./checkpoint.pth
 ```
 
-## Experiments
-### Exp1
-Patch-based version, no interpolation
-
 Input images
 ![input](https://github.com/dros1986/filter_removal/blob/master/images/input.png)
 
 Output images
 ![output](https://github.com/dros1986/filter_removal/blob/master/images/output.png)
-
-Comparison
-![input](https://github.com/dros1986/filter_removal/blob/master/images/comparison.gif)
 
 ## Exp Table
 | Exp       | patchSize | Net In | Poly In | Range | Interpolation | TanH | ReLU |
