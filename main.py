@@ -314,5 +314,6 @@ else:
 		for i in range(output.size(0)):
 			cur_img = output[i,:,:,:].data
 			cur_fn = fns[i]
+			cur_fn = os.path.splitext(cur_fn)[0] + '.png'
 			if not os.path.isdir('./restored/'): os.makedirs('./restored/')
 			utils.save_image(cur_img, os.path.join('./restored/', cur_fn), nrow=1, padding=0)
