@@ -3,6 +3,19 @@ Clone this repository in this way:
 ```git
 git clone --recursive https://github.com/dros1986/filter_removal.git
 ```
+## Introduction
+In order to replicate the experiments of the paper:
+
+```bash
+# download the dataset
+wget https://drive.google.com/a/campus.unimib.it/uc?export=download&confirm=XAOn&id=1vvLAO__opCjgLfRjAjW3WPWJHNiiVLbs
+# unzip the file
+unzip file.zip -d ./datasets/
+# lunch training
+python main.py -degin 3 degout 3
+# lunch test
+python main.py -degin 3 degout 3 --regen ./checkpoint.pth
+```
 
 ## Experiments
 ### Exp1
