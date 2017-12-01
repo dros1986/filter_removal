@@ -25,7 +25,7 @@ Input images
 Output images
 ![output](https://github.com/dros1986/filter_removal/blob/master/images/output.png)
 
-<video src="./images/output.mp4" width="1292" height="1292" controls preload autoplay loop></video>
+<video src="https://github.com/dros1986/filter_removal/blob/master/images/output.mp4" width="1292" height="1292" controls preload autoplay loop></video>
 
 ## Parameters
 | Name | Description | Default |
