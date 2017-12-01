@@ -30,9 +30,14 @@ Output images
   Your browser does not support the video tag.
 </video>
 
-<iframe width="420" height="420"
-  src="https://github.com/dros1986/filter_removal/blob/master/images/output.mp4">
-</iframe>
+<figure class="large">
+    <div class="myvideo">
+       <video  style="display:block; width:100%; height:auto;" autoplay controls loop="loop">
+           <source src="https://github.com/dros1986/filter_removal/blob/master/images/output.mp4" type="video/mp4" />
+       </video>
+    </div>
+<figcaption>A nice movie format</figcaption>
+</figure>
 
 ## Parameters
 | Name | Description | Default |
