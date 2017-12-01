@@ -30,6 +30,11 @@ Output images
   Your browser does not support the video tag.
 </video>
 
+<video width="320" height="240" controls>
+  <source src="https://github.com/dros1986/filter_removal/blob/master/images/output.mp4" type="video/mp4">
+Your browser does not support the video tag.
+</video>
+
 ## Parameters
 | Name | Description | Default |
 | ---- | ----------- | ------- |
