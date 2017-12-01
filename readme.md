@@ -26,7 +26,7 @@ Output images
 ![output](https://github.com/dros1986/filter_removal/blob/master/images/output.png)
 
 
-<meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+<script src="http://api.html5media.info/1.1.8/html5media.min.js"></script>
 <video width="1292" height="1292" controls preload autoplay loop>
 <source src="https://github.com/dros1986/filter_removal/blob/master/images/output.mp4" type="video/mp4" />
   Your browser does not support the video tag.
