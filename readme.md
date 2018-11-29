@@ -13,9 +13,9 @@ git clone --recursive https://github.com/dros1986/filter_removal.git
 wget https://drive.google.com/a/campus.unimib.it/uc?export=download&confirm=XAOn&id=1vvLAO__opCjgLfRjAjW3WPWJHNiiVLbs
 # unzip the file
 unzip file.zip -d ./datasets/
-# lunch training
+# start training
 python main.py -degin 3 degout 3
-# lunch test
+# start test
 python main.py -degin 3 degout 3 --regen ./checkpoint.pth
 ```
 
