@@ -246,7 +246,7 @@ if not args.regen:
 			# reset gradients
 			optimizer.zero_grad()
 			# calculate filters and multiply them to patches
-			output = net.forward(filt)
+			output = net(filt)
 			# apply loss
 			loss = Loss(output, orig)
 			# backward
@@ -288,7 +288,7 @@ else:
 		# move in GPU
 		orig, filt, target = orig.cuda(), filt.cuda(), target.cuda()
 		# regenerate
-		output = net.forward(filt)
+		output = net(filt)
 		# save images
 		for i in range(output.size(0)):
 			cur_img = output[i,:,:,:].data
